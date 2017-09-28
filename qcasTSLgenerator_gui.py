@@ -1,7 +1,8 @@
 # Version 1.0 - rewrote in AWK, then ported to Python.
 # Version 1.0.1 - now removes commas in game names, and any duplicate entries.
 # Version 1.0.2 - Monolith version. Utilises a single python script to generate, combine, sort and filter the TSL file. 
-# Version 1.0.3 - Converted to a Class 
+# Version 1.0.3 - Converted to a Class
+# Version 1.1 - Updated GUI
 # Last Modified date: 12/5/2015
 import csv
 import sys
@@ -12,7 +13,9 @@ from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 
-class QCAStslgenerator:
+VERSION = "1.1"
+
+class QCAS_TSL_Generator:
     
     # default constructor
     def __init__(self, f1, f2):
@@ -33,7 +36,7 @@ class QCAStslgenerator:
     # GUI constructor
     def __init__(self):
         self.root = Tk()
-        self.setupGUI()
+        self.setup_GUI()
     
     def handleButtonPress(self, myButtonPress):
         if myButtonPress == '__tab_delimited_file__':
@@ -78,15 +81,17 @@ class QCAStslgenerator:
                 messagebox.showerror("Files not Chosen!", "Please select files first")
                 
 
-    def setupGUI(self):
-        self.root.wm_title("qcasTSLgenerator v1.0.3")
+    def setup_GUI(self):
+        self.root.wm_title("qcasTSLgenerator v"+VERSION)
         self.root.resizable(0,0)
-        
+        help_text = "This script automates the generation of the QCOM Casino Datafile TSL file.\n"
         ttk.Label(self.root, justify=LEFT,
-                  text = 'This script automates the generation of the QCOM Casino Datafile TSL file.').grid(row = 0, columnspan=2, padx=3, pady=3)
+                  text = help_text).grid(row = 0, columnspan=2, padx=3, pady=3)
 
         # Button
-        button_Choose_TAB_delimited_file = ttk.Button(self.root, text = "Choose TAB delimited file...",
+        button_Choose_TAB_delimited_file = ttk.Button(self.root,
+                                                      text = "Choose TAB delimited file...",
+                                                      width = 30,
                                                       command = lambda: self.handleButtonPress('__tab_delimited_file__'))                                             
         button_Choose_TAB_delimited_file.grid(row=1, column=0, padx=3, pady=3, sticky='e')
 
@@ -95,7 +100,9 @@ class QCAStslgenerator:
         self.tab_delimited_filename_tf.grid(row=1, column=1)
 
         # Button
-        button_Choose_Current_TSL_file = ttk.Button(self.root, text = "Choose Current TSL file...",
+        button_Choose_Current_TSL_file = ttk.Button(self.root,
+                                                    text = "Choose Current TSL file...",
+                                                    width = 30,
                                                     command = lambda: self.handleButtonPress('__current_tsl_file__'))                                                    
         button_Choose_Current_TSL_file.grid(row=2, column=0, padx=3, pady=3, sticky='e')
 
@@ -215,7 +222,6 @@ class QCAStslgenerator:
         self.filename = outfilename
 
 def main():
-    #app = QCAStslgenerator(sys.argv[1], sys.argv[2])
-    app = QCAStslgenerator()    
+    app = QCAS_TSL_Generator()    
     
 if __name__ == "__main__": main()
