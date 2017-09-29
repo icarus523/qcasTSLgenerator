@@ -59,10 +59,18 @@ class QCAS_TSL_Generator:
                 self.filename2 = self.current_tsl_filename_tf.get()
                 self.final_filename = self.new_tsl_filename_tf.get()
                             
-                self.genNewTSLEntries()
-                self.concatenateTSLfiles()
-                self.sortFile()
-                self.dropDuplicates()
+                new_game_list = self.genNewTSLEntries()
+                concatenated_game_list = self.concatenateTSLfiles(new_game_list)               
+                sorted_game_list = self.sortFile(concatenated_game_list)
+
+                #for item in sorted_game_list: 
+                #    print(item)
+                
+                final_new_game_list = self.dropDuplicates(sorted_game_list)
+
+
+
+                self.write_game_list_to_file(final_new_game_list)
 
                 openfile = messagebox.askquestion("qcasTSLgenerator: Finished!", "Generated new TSL file: " + self.final_filename +
                                                   "\nOpen the file?")
@@ -79,7 +87,13 @@ class QCAS_TSL_Generator:
 
             else:
                 messagebox.showerror("Files not Chosen!", "Please select files first")
-                
+
+        # input: game list
+        # output: none
+    def write_game_list_to_file(self, game_list):
+        with open(self.final_filename, 'w+') as outfile:
+            for game in game_list: 
+                outfile.write(game)
 
     def setup_GUI(self):
         self.root.wm_title("qcasTSLgenerator v"+VERSION)
@@ -127,6 +141,7 @@ class QCAS_TSL_Generator:
     # output: Filename of new TSL game entries
     def genNewTSLEntries(self):
         outfilename = self.filename.rstrip(".txt") + "_TSL_FORMAT.tsl"
+        new_tsl_entries = list() 
         try:
             outfile = open(outfilename, "w+")
             infile = open(self.filename, 'r')
@@ -156,70 +171,67 @@ class QCAS_TSL_Generator:
                 else:
                     sys.exit('Unknown binimage type %s' % row['bin_type'])         
 
-                # print ("%02d,%010d,%-60s,%-20s,%4s" % (int(row['manufacturer']), 
-                #   int(row['ssan']), cleaned_game_name, row['binimage'], my_bin_type))
-                outfile.writelines("%02d,%010d,%-60s,%-20s,%4s\n" % 
+                #outfile.writelines("%02d,%010d,%-60s,%-20s,%4s\n" % 
+                #    (int(row['manufacturer']), int(row['ssan']), 
+                #    cleaned_game_name, row['binimage'], my_bin_type))
+                game_entry = str("%02d,%010d,%-60s,%-20s,%4s\n" % 
                     (int(row['manufacturer']), int(row['ssan']), 
                     cleaned_game_name, row['binimage'], my_bin_type))
+                new_tsl_entries.append(game_entry)
             
             infile.close();
         except csv.Error as e: 
             sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
         
-        self.filename = outfilename
+        #self.filename = outfilename 
+        
+        return new_tsl_entries
+
+        # input: none:
+        # output: list of games, one line each
+    def scan_old_TSL_files(self):
+        file = list()
+        with open(self.current_tsl_filename_tf.get(), 'r') as old_TSL_file:
+            file = old_TSL_file.readlines()
+
+        return file    
 
 	# input:    None
-	# output:   Filename for Single TSL file concatenated created, 
-	#           i.e. cat tslfile1 >> tslfile2
-    def concatenateTSLfiles(self):
-        filenames = [self.filename, self.filename2]
-        outputfilename = self.filename.rstrip(".tsl") + "_&_new_games_&_concat.tsl"
-    
-        with open(outputfilename, 'w+') as outfile:
-            for fname in filenames:
-                with open(fname) as infile:
-                    outfile.write(infile.read())           
-        self.filename = outputfilename
+	# output:   Concatenated game list created, 
+    def concatenateTSLfiles(self, new_game_list):
+        old_game_list = self.scan_old_TSL_files()
+        concatenated_tsl_game_list = new_game_list + old_game_list
 
-	# input: TSL file that includes duplicate entries
-	# output: Filename for Single TSL file with no duplicate entries. 
-    def dropDuplicates(self):
-        lines_seen = set() # holds lines already seen
-        #outfilename = self.filename.rstrip(".tsl")+ "_&_no_dups.tsl"
-        outfilename = self.final_filename;
+        return concatenated_tsl_game_list
+
+	# input: a sorted games list
+	# output: games list with no duplicate entries. 
+    def dropDuplicates(self, game_list):
+
+##        glist = list()
+##        for item in game_list:
+##            game_entry = ','.join(item) # convert list of strings back to string
+##            game_entry += '\n'
+##            glist.append(game_entry)
+            
+        return list(set(game_list))
+
+    # input: Game List that is unordered
+    # output: Game List that is ordered.
+    def sortFile(self, game_list):
+        #input_fieldnames = ['manufacturer', 'ssan', 'game_name', 'binimage', 'bin_type']
+        #data = csv.DictReader(game_list, delimiter=',', fieldnames=input_fieldnames)
+        #sortedlist = sorted(data, key=operator.itemgetter('manufacturer','game_name','ssan'))
+        mysortedlist = list()
         
-        outfile = open(outfilename, "w+")
-        for line in open(self.filename, "r"):
-            if line not in lines_seen: # not a duplicate
-                outfile.write(line)
-                lines_seen.add(line)
-        outfile.close()
-        self.filename = outfilename
-        self.final_filename = outfilename
-
-    # input: TSL file that is unordered
-    # output: Filename for Single TSL file that is ordered.
-    def sortFile(self):
-        outfilename = self.filename.rstrip(".tsl") + "_&_sorted.tsl"
-        try:
-            outfile = open(outfilename, "w+")
-            infile = open(self.filename, 'r')
-            reader = csv.reader(infile, delimiter=",")
-
-            # Sort column 0, 2, 1: SSAN, Game Name, Approval Number
-            sortedlist = sorted(reader, key=operator.itemgetter(0,2,1))
-  
-            # To print a list
-            for item in sortedlist:
-                # Uncomment next line to print to screen. 
-                # print (",".join(item))
-                outfile.writelines([",".join(item), '\n'])
-
-            outfile.close()
-
-        except csv.Error as e: 
-            sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
-        self.filename = outfilename
+        data = csv.reader(game_list, delimiter=',')
+        sortedlist = sorted(data, key=operator.itemgetter(0,2,1))
+        for item in sortedlist:
+            line = str([",".join(item), '\n'])
+            mysortedlist.append(line)
+            
+        return mysortedlist
+    
 
 def main():
     app = QCAS_TSL_Generator()    
