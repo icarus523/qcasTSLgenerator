@@ -2,7 +2,7 @@
 # Version 1.0.1 - now removes commas in game names, and any duplicate entries.
 # Version 1.0.2 - Monolith version. Utilises a single python script to generate, combine, sort and filter the TSL file. 
 # Version 1.0.3 - Converted to a Class
-# Version 1.1 - Updated GUI
+# Version 1.1 - Updated GUI, removed dependency on text file processing
 # Last Modified date: 12/5/2015
 import csv
 import sys
@@ -17,22 +17,6 @@ VERSION = "1.1"
 
 class QCAS_TSL_Generator:
     
-    # default constructor
-    def __init__(self, f1, f2):
-        self.filename = f1
-        self.filename2 = f2
-        self.final_filename = ""
-
-        # 1. Generate New TSL game entries using input parameter 1
-        # 2. Concatenate TSL files using input parameter 1 & 2
-        # 3. Sort Files
-        # 4. Drop duplicates
-        
-        self.genNewTSLEntries()
-        self.concatenateTSLfiles()
-        self.sortFile()
-        self.dropDuplicates()
-
     # GUI constructor
     def __init__(self):
         self.root = Tk()
@@ -54,36 +38,31 @@ class QCAS_TSL_Generator:
             self.current_tsl_filename_tf.insert(0, self.filename2)
 
         elif myButtonPress == '__start__':
-            if (os.path.isfile(self.filename)) or (os.path.isfile(self.filename2)):
-                self.filename = self.tab_delimited_filename_tf.get()
-                self.filename2 = self.current_tsl_filename_tf.get()
-                self.final_filename = self.new_tsl_filename_tf.get()
+            if (os.path.isfile(self.tab_delimited_filename_tf.get())) or (os.path.isfile(self.current_tsl_filename_tf.get())):
+                #self.filename = self.tab_delimited_filename_tf.get()
+                #self.filename2 = self.current_tsl_filename_tf.get()
+                #self.final_filename = self.new_tsl_filename_tf.get()
                             
                 new_game_list = self.genNewTSLEntries()
                 concatenated_game_list = self.concatenateTSLfiles(new_game_list)               
                 sorted_game_list = self.sortFile(concatenated_game_list)
-
-                #for item in sorted_game_list: 
-                #    print(item)
                 
-                final_new_game_list = self.dropDuplicates(sorted_game_list)
-
-
+                final_new_game_list = self.sortFile(self.dropDuplicates(sorted_game_list))
 
                 self.write_game_list_to_file(final_new_game_list)
 
-                openfile = messagebox.askquestion("qcasTSLgenerator: Finished!", "Generated new TSL file: " + self.final_filename +
+                openfile = messagebox.askquestion("qcasTSLgenerator: Finished!", "Generated new TSL file: " + self.new_tsl_filename_tf.get() +
                                                   "\nOpen the file?")
                 if (openfile == 'yes'):
                     if (os.name == 'nt'): # Windows OS
-                        os.system("start "+self.final_filename)
+                        os.system("start "+self.new_tsl_filename_tf.get())
                     elif (os.name == 'posix'): # Linux OS
-                        os.system("open " + self.final_filename)
+                        os.system("open " + self.new_tsl_filename_tf.get())
                     else: 
-                        print("Can't open file: " + self.final_filename)
-                        messagebox.showerror("Unknown Operating system: " + os.name , "Sorry, could not open file: " + self.final_filename)
+                        print("Can't open file: " + self.new_tsl_filename_tf.get())
+                        messagebox.showerror("Unknown Operating system: " + os.name , "Sorry, could not open file: " + self.new_tsl_filename_tf.get())
                 else:
-                    print("Generated new TSL file: " + self.final_filename)
+                    print("Generated new TSL file: " + self.new_tsl_filename_tf.get())
 
             else:
                 messagebox.showerror("Files not Chosen!", "Please select files first")
@@ -91,7 +70,7 @@ class QCAS_TSL_Generator:
         # input: game list
         # output: none
     def write_game_list_to_file(self, game_list):
-        with open(self.final_filename, 'w+') as outfile:
+        with open(self.new_tsl_filename_tf.get(), 'w+') as outfile:
             for game in game_list: 
                 outfile.write(game)
 
@@ -127,7 +106,7 @@ class QCAS_TSL_Generator:
         ttk.Label(self.root, text = 'Enter new TSL filename: ').grid(row = 3, column=0, sticky='e', padx=3, pady=3)
 
         self.v = StringVar()
-        self.v.set("qcas_2015_05_v02.tsl")
+        self.v.set("qcas_2017_09_v03.tsl")
         self.new_tsl_filename_tf = ttk.Entry(self.root, width = 50, textvariable=self.v)
         self.new_tsl_filename_tf.grid(row=3, column=1, padx=3, pady=3)
 
@@ -140,50 +119,42 @@ class QCAS_TSL_Generator:
     # input: TAB delimited file, exported from MS Excel.
     # output: Filename of new TSL game entries
     def genNewTSLEntries(self):
-        outfilename = self.filename.rstrip(".txt") + "_TSL_FORMAT.tsl"
         new_tsl_entries = list() 
         try:
-            outfile = open(outfilename, "w+")
-            infile = open(self.filename, 'r')
-            input_fieldnames = ['game_name', 'manufacturer', 'approval_status', 
-                'approval_date', 'market','ssan','vid_type','binimage','bin_type']
-            reader = csv.DictReader(infile, delimiter='\t', fieldnames=input_fieldnames)
+            with open(self.tab_delimited_filename_tf.get(), 'r') as infile: 
+                input_fieldnames = ['game_name', 'manufacturer', 'approval_status', 
+                    'approval_date', 'market','ssan','vid_type','binimage','bin_type']
+                reader = csv.DictReader(infile, delimiter='\t', fieldnames=input_fieldnames)
 
-            for row in reader:
-                # Remove commas in game name
-                # If you want to replace it with another symbol change the following 
-                #   line to: .replace(",","[INSERT SYMBOL HERE]")
-                cleaned_game_name = str(row['game_name']).replace(",", "")
+                for row in reader:
+                    # Remove commas in game name
+                    # If you want to replace it with another symbol change the following 
+                    #   line to: .replace(",","[INSERT SYMBOL HERE]")
+                    cleaned_game_name = str(row['game_name']).replace(",", "")
             
-                # Process Video Type & Append to game name
-                if row['vid_type'].lower() == 'video':
-                    cleaned_game_name += "-V"
-                else :
-                    cleaned_game_name += "-S"
+                    # Process Video Type & Append to game name
+                    if row['vid_type'].lower() == 'video':
+                        cleaned_game_name += "-V"
+                    else :
+                        cleaned_game_name += "-S"
 
-                # Process Binimage type
-                if row['bin_type'] == 'BIN LINK FILE':
-                    my_bin_type = 'BLNK'
-                elif row['bin_type'] == 'PSA 32':
-                    my_bin_type = "PS32"
-                elif row['bin_type'] == 'HMAC SHA1':
-                    my_bin_type = "SHA1"
-                else:
-                    sys.exit('Unknown binimage type %s' % row['bin_type'])         
+                    # Process Binimage type
+                    if row['bin_type'] == 'BIN LINK FILE':
+                        my_bin_type = 'BLNK'
+                    elif row['bin_type'] == 'PSA 32':
+                        my_bin_type = "PS32"
+                    elif row['bin_type'] == 'HMAC SHA1':
+                        my_bin_type = "SHA1"
+                    else:
+                        sys.exit('Unknown binimage type %s' % row['bin_type'])         
 
-                #outfile.writelines("%02d,%010d,%-60s,%-20s,%4s\n" % 
-                #    (int(row['manufacturer']), int(row['ssan']), 
-                #    cleaned_game_name, row['binimage'], my_bin_type))
-                game_entry = str("%02d,%010d,%-60s,%-20s,%4s\n" % 
-                    (int(row['manufacturer']), int(row['ssan']), 
-                    cleaned_game_name, row['binimage'], my_bin_type))
-                new_tsl_entries.append(game_entry)
+                    game_entry = str("%02d,%010d,%-60s,%-20s,%4s\n" % 
+                        (int(row['manufacturer']), int(row['ssan']), 
+                        cleaned_game_name, row['binimage'], my_bin_type))
+                    new_tsl_entries.append(game_entry)
             
-            infile.close();
         except csv.Error as e: 
             sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
-        
-        #self.filename = outfilename 
         
         return new_tsl_entries
 
@@ -201,19 +172,13 @@ class QCAS_TSL_Generator:
     def concatenateTSLfiles(self, new_game_list):
         old_game_list = self.scan_old_TSL_files()
         concatenated_tsl_game_list = new_game_list + old_game_list
-
+        
         return concatenated_tsl_game_list
 
 	# input: a sorted games list
 	# output: games list with no duplicate entries. 
-    def dropDuplicates(self, game_list):
-
-##        glist = list()
-##        for item in game_list:
-##            game_entry = ','.join(item) # convert list of strings back to string
-##            game_entry += '\n'
-##            glist.append(game_entry)
-            
+    def dropDuplicates(self, game_list):           
+        
         return list(set(game_list))
 
     # input: Game List that is unordered
@@ -222,15 +187,16 @@ class QCAS_TSL_Generator:
         #input_fieldnames = ['manufacturer', 'ssan', 'game_name', 'binimage', 'bin_type']
         #data = csv.DictReader(game_list, delimiter=',', fieldnames=input_fieldnames)
         #sortedlist = sorted(data, key=operator.itemgetter('manufacturer','game_name','ssan'))
-        mysortedlist = list()
+        my_sorted_game_list = list()
         
         data = csv.reader(game_list, delimiter=',')
         sortedlist = sorted(data, key=operator.itemgetter(0,2,1))
+        
         for item in sortedlist:
-            line = str([",".join(item), '\n'])
-            mysortedlist.append(line)
+            line = ",".join(item) + '\n' # convert list to string. 
+            my_sorted_game_list.append(line)
             
-        return mysortedlist
+        return my_sorted_game_list
     
 
 def main():
