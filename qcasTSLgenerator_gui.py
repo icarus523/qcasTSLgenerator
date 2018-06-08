@@ -3,18 +3,21 @@
 # Version 1.0.2 - Monolith version. Utilises a single python script to generate, combine, sort and filter the TSL file. 
 # Version 1.0.3 - Converted to a Class
 # Version 1.1 - Updated GUI, removed dependency on text file processing, autogenerate qcas.bat file
-# Last Modified date: 4/10/2017
+# Versopm 1.2 - Updated to remove non-ASCII characters from game names
+# Last Modified date: 8/6/2018
 import csv
 import sys
 import operator
 import os
+import re
+
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 from datetime import datetime
 
-VERSION = "1.1"
+VERSION = "1.2"
 QCAS_BATCH_FILE_HEADER_STR = ("Echo To be run on Datafile PC\n" 
     "Echo CTRL-C to exit\nPause\n" 
     "REM **********************************************************************************************************************************\n"
@@ -301,7 +304,10 @@ class QCAS_TSL_Generator:
                     # If you want to replace it with another symbol change the following 
                     #   line to: .replace(",","[INSERT SYMBOL HERE]")
                     cleaned_game_name = str(row['game_name']).replace(",", "")
-            
+                    
+                    # remove non-ascii characters using re
+                    cleaned_game_name = re.sub(r'[^\x00-\x7f]',r'', cleaned_game_name)
+                
                     # Process Video Type & Append to game name
                     if row['vid_type'].lower() == 'video':
                         cleaned_game_name += "-V"
