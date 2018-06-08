@@ -3,7 +3,9 @@
 # Version 1.0.2 - Monolith version. Utilises a single python script to generate, combine, sort and filter the TSL file. 
 # Version 1.0.3 - Converted to a Class
 # Version 1.1 - Updated GUI, removed dependency on text file processing, autogenerate qcas.bat file
-# Versopm 1.2 - Updated to remove non-ASCII characters from game names
+# Version 1.2 - Updated to remove non-ASCII characters from game names
+# Version 1.2.1 - Updated to handle abortion on qcas.bat selection
+
 # Last Modified date: 8/6/2018
 import csv
 import sys
@@ -17,7 +19,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from datetime import datetime
 
-VERSION = "1.2"
+VERSION = "1.2.1"
 QCAS_BATCH_FILE_HEADER_STR = ("Echo To be run on Datafile PC\n" 
     "Echo CTRL-C to exit\nPause\n" 
     "REM **********************************************************************************************************************************\n"
@@ -218,16 +220,17 @@ class QCAS_TSL_Generator:
 
                 if (generate_qcas_batch_file == 'yes'):
                     tmp = filedialog.askopenfile(initialdir=QCAS_DIRECTORY, title = "Select current qcas.bat file", filetypes = (("bat files","*.bat"),("all files","*.*")))
-                    self.current_filename = tmp.name # get filename
+                    if tmp: 
+                        self.current_filename = tmp.name # get filename
 
-                    batch_file = QCAS_batch_file(self.current_filename, self.new_tsl_filename_tf.get())
-                    # get batch_file generated entries
-                    entries = batch_file.read_qcas_bat_file()
+                        batch_file = QCAS_batch_file(self.current_filename, self.new_tsl_filename_tf.get())
+                        # get batch_file generated entries
+                        entries = batch_file.read_qcas_bat_file()
 
-                    # replace lines
-                    batch_file.replace_qcas_command(entries)
+                        # replace lines
+                        batch_file.replace_qcas_command(entries)
+                        print("Generated new qcas.bat file: " + batch_file.get_filename())
 
-                    print("Generated new qcas.bat file: " + batch_file.get_filename())
                     print("Generated new TSL file: " + self.new_tsl_filename_tf.get())
                 else:
                     print("Generated new TSL file: " + self.new_tsl_filename_tf.get())
