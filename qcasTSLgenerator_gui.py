@@ -5,8 +5,9 @@
 # Version 1.1 - Updated GUI, removed dependency on text file processing, autogenerate qcas.bat file
 # Version 1.2 - Updated to remove non-ASCII characters from game names
 # Version 1.2.1 - Updated to handle abortion on qcas.bat selection
+# Version 1.2.2 - Updated to handle leading "0" on Month file for MSL and PSL
 
-# Last Modified date: 8/6/2018
+# Last Modified date: 5/7/2018
 import csv
 import sys
 import operator
@@ -19,7 +20,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from datetime import datetime
 
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 QCAS_BATCH_FILE_HEADER_STR = ("Echo To be run on Datafile PC\n" 
     "Echo CTRL-C to exit\nPause\n" 
     "REM **********************************************************************************************************************************\n"
@@ -94,10 +95,15 @@ class QCAS_batch_file():
         else:
             print("unknown mode: " + mode)
             sys.exit(1)
+
+        if qcas_month < 10:
+            qcas_month = "0" + str(qcas_month)
+        else:
+            qcas_month = str(qcas_month)
             
         return (qcas_str + "_" +
                 str(qcas_year) + "_" +
-                str(qcas_month) + "_v" + 
+                qcas_month + "_v" + 
                 self.format_version(qcas_version) + "." + ext)
 
         # input: msl file name, flag for new month
@@ -119,8 +125,13 @@ class QCAS_batch_file():
             if generated_month > 12:
                 generated_month = 1 # handle new years
 
+        if generated_month < 10:
+            generated_month = "0" + str(generated_month)
+        else:
+            generated_month = str(generated_month)
+
         # qcas MSL file is always a v01
-        return "qcas_" + str(qcas_year) + "_" + str(generated_month) + "_v01.msl" 
+        return "qcas_" + str(qcas_year) + "_" + generated_month + "_v01.msl" 
         
         # input: none
         # output: two (2) strings in a list that is used to update the current qcas.bat file
