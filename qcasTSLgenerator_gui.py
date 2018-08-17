@@ -6,8 +6,9 @@
 # Version 1.2 - Updated to remove non-ASCII characters from game names
 # Version 1.2.1 - Updated to handle abortion on qcas.bat selection
 # Version 1.2.2 - Updated to handle leading "0" on Month file for MSL and PSL
+# Version 1.2.3 - Updated to fix qcas autogeneration, now prompts users if a new Game is being generated in a new month (refer to diagram).
 
-# Last Modified date: 5/7/2018
+# Last Modified date: 17/8/2018
 import csv
 import sys
 import operator
@@ -20,7 +21,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from datetime import datetime
 
-VERSION = "1.2.2"
+VERSION = "1.2.3"
 QCAS_BATCH_FILE_HEADER_STR = ("Echo To be run on Datafile PC\n" 
     "Echo CTRL-C to exit\nPause\n" 
     "REM **********************************************************************************************************************************\n"
@@ -39,9 +40,10 @@ QCAS_DIRECTORY = "G:\OLGR-TECHSERV\MISC\BINIMAGE\qcas"
 
 class QCAS_batch_file():
 
-    def __init__(self, fname, new_tsl_file):
+    def __init__(self, fname, new_tsl_file, new_games_new_month):
         self.filename = fname
         self.new_tsl_file = new_tsl_file
+        self.new_games_new_month = new_games_new_month
 
     def get_filename(self):
         return self.filename
@@ -100,30 +102,38 @@ class QCAS_batch_file():
             qcas_month = "0" + str(qcas_month)
         else:
             qcas_month = str(qcas_month)
-            
-        return (qcas_str + "_" +
+
+        if mode == 'version': 
+            return(qcas_str + "_" +
                 str(qcas_year) + "_" +
                 qcas_month + "_v" + 
                 self.format_version(qcas_version) + "." + ext)
+        elif mode == 'month': 
+            return (qcas_str + "_" +
+                    str(qcas_year) + "_" +
+                    qcas_month + "_v" + 
+                    self.format_version(1) + "." + ext) # version always 1
 
         # input: msl file name, flag for new month
         # output: updated complete msl file name
-    def update_msl_file(self, file_name_input, new_month = 'n'):
+    def update_msl_file(self, file_name_input, new_month):
         filename = file_name_input.split('.')[0]
 
         fileparts = filename.split('_')
         qcas_str = fileparts[0]
         qcas_year = int(fileparts[1])
         qcas_month = int(fileparts[2])
-        qcas_version = int(fileparts[3][1:]) # remove first char from string "v03"
+        # qcas_version = int(fileparts[3][1:]) # remove first char from string "v03"
 
-        if new_month == 'n': 
-            generated_month = int(datetime.now().month)
+        if not new_month: 
+            # generated_month = int(datetime.now().month)
+            generated_month = qcas_month
         else:
-            generated_month = int(datetime.now().month) + 1
+            generated_month = qcas_month + 1
 
             if generated_month > 12:
                 generated_month = 1 # handle new years
+                qcas_year += 1 # inc year
 
         if generated_month < 10:
             generated_month = "0" + str(generated_month)
@@ -141,45 +151,65 @@ class QCAS_batch_file():
         outputstr_list = list()
         entries_to_change = 0
         outputstr = ""
+        command_list_str = list()
         
         with open(self.filename, 'r') as batch_file:
             file = batch_file.readlines()
 
+            # read file and build a list of command string
+            # command_list_str[0] is current month
+            # command_list_str[1] is next month
             while entries_to_change < 2: 
                 for line in file:
                     if line.startswith("epsigQCAS3_5.exe"):
                         entries_to_change += 1
+                        command_list_str.append(line) 
+                        
+            ## If a new game is being approved in a month.
+            if self.new_games_new_month == True:
+                # Current Month PSL files are not going to be used, use next month (command_list_str[1]) inc versions to be used as current month 
+                # use last month PSL as Current PSL, inc Version
+                # use last month MSL as Current MSL
+                fields = command_list_str[1].split(' ')
+                command = fields[0]
+                path = fields[1]
+                msl = fields[2]
+                psl = fields[4]
+                new_psl_file = self.increment_version(psl, mode='version') # inc PSL version
+                
+                outputstr = command + " " + path + " " + msl + " " + self.new_tsl_file + " " + new_psl_file
+                outputstr_list.append(outputstr)
+                
+                # Next Month
+                new_month_msl = self.update_msl_file(msl, new_month=True)                 # new msl inc
+                new_month_psl = self.increment_version(psl, mode='month')                 # new psl v1
+                
+                outputstr = command + " " + path + " " + new_month_msl + " " + self.new_tsl_file + " " + new_month_psl
+                outputstr_list.append(outputstr)
+            else: 
+                # Current Month MSL remains the same
+                # Current Month PSL inc version
+                fields1 = command_list_str[0].split(' ')
+                command = fields1[0]
+                path = fields1[1]
+                msl = fields1[2]
+                psl = fields1[4]
+                current_month_psl = self.increment_version(psl, mode='version') 
 
-                        fields = line.split(' ')
-                        command = fields[0]
-                        path = fields[1]
-                        msl = fields[2]
-                        tsl = fields[3]
-                        psl = fields[4]
+                outputstr = command + " " + path + " " + msl + " " + self.new_tsl_file + " " + current_month_psl
+                outputstr_list.append(outputstr)
+                
+                # Next Month MSL remains the same
+                # Next Month PSL inc version.
+                fields2 = command_list_str[1].split(' ')
+                command = fields2[0]
+                path = fields2[1]
+                msl = fields2[2]
+                psl = fields2[4]
+                next_mont_psl = self.increment_version(psl, mode='version')
 
-                        if entries_to_change == 1:
-                            # First entry in batch file:
-                            # MSL - current month
-                            # TSL - change to created TSL filename input
-                            # PSL - increment version (always incremented)
-                            new_msl_file = self.update_msl_file(msl, new_month='n')
-                            new_psl_file = self.increment_version(psl, mode='version')
-                            outputstr = command + " " + path + " " + new_msl_file + " " + self.new_tsl_file + " " + new_psl_file
-                            outputstr_list.append(outputstr)
-                        elif entries_to_change == 2:
-                            # Second entry in batch file:
-                            # MSL - current month + 1
-                            # TSL - change to created TSL filename input
-                            # PSL - change month + 1, increment version if not version is v01. 
-                            
-                            new_msl_file = self.update_msl_file(msl, new_month='y')
-
-                            # update PSL file
-                            psl_file = self.increment_version(psl, mode='month')
-                            new_psl_file = self.increment_version(psl, mode='year')
-                            
-                            outputstr = command + " " + path + " " + new_msl_file + " " + self.new_tsl_file + " " + new_psl_file
-                            outputstr_list.append(outputstr)
+                outputstr = command + " " + path + " " + msl + " " + self.new_tsl_file + " " + next_mont_psl
+                outputstr_list.append(outputstr)
 
         return outputstr_list
 
@@ -234,7 +264,10 @@ class QCAS_TSL_Generator:
                     if tmp: 
                         self.current_filename = tmp.name # get filename
 
-                        batch_file = QCAS_batch_file(self.current_filename, self.new_tsl_filename_tf.get())
+                        new_games_in_new_month = messagebox.askyesno("New Games in New Month?", "Is a new game being approved in a new month?")
+                        print("New Games in New Month?: " + str(new_games_in_new_month))
+                        batch_file = QCAS_batch_file(self.current_filename, self.new_tsl_filename_tf.get(), new_games_in_new_month)
+
                         # get batch_file generated entries
                         entries = batch_file.read_qcas_bat_file()
 
