@@ -2,6 +2,10 @@
 
 This is a script to generate the TSL file, to be used for the generation of new MSL/PSL files for Queensland Casinos. 
 
+## Version 1.2.3 (22/8/2018) 
+
+Skips first line of TAB delimited file automatically
+
 ## Version 1.2.2 (5/7/2018)
 
 Updated to handle leading "0" on Month file for MSL and PSL
