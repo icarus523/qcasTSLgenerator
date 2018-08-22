@@ -7,8 +7,9 @@
 # Version 1.2.1 - Updated to handle abortion on qcas.bat selection
 # Version 1.2.2 - Updated to handle leading "0" on Month file for MSL and PSL
 # Version 1.2.3 - Updated to fix qcas autogeneration, now prompts users if a new Game is being generated in a new month (refer to diagram).
+# Version 1.2.4 - Automatically removes headers from Tab Delimited File 
+# Last Modified date: 22/8/2018
 
-# Last Modified date: 17/8/2018
 import csv
 import sys
 import operator
@@ -21,7 +22,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from datetime import datetime
 
-VERSION = "1.2.3"
+VERSION = "1.2.4"
 QCAS_BATCH_FILE_HEADER_STR = ("Echo To be run on Datafile PC\n" 
     "Echo CTRL-C to exit\nPause\n" 
     "REM **********************************************************************************************************************************\n"
@@ -114,8 +115,8 @@ class QCAS_batch_file():
                     qcas_month + "_v" + 
                     self.format_version(1) + "." + ext) # version always 1
 
-        # input: msl file name, flag for new month
-        # output: updated complete msl file name
+    # input: msl file name, flag for new month
+    # output: updated complete msl file name
     def update_msl_file(self, file_name_input, new_month):
         filename = file_name_input.split('.')[0]
 
@@ -143,9 +144,9 @@ class QCAS_batch_file():
         # qcas MSL file is always a v01
         return "qcas_" + str(qcas_year) + "_" + generated_month + "_v01.msl" 
         
-        # input: none
-        # output: two (2) strings in a list that is used to update the current qcas.bat file
-        # 
+    # input: none
+    # output: two (2) strings in a list that is used to update the current qcas.bat file
+    # 
     def read_qcas_bat_file(self):
         batch_file = list()
         outputstr_list = list()
@@ -244,9 +245,6 @@ class QCAS_TSL_Generator:
 
         elif myButtonPress == '__start__':
             if (os.path.isfile(self.tab_delimited_filename_tf.get())) or (os.path.isfile(self.current_tsl_filename_tf.get())):
-                #self.filename = self.tab_delimited_filename_tf.get()
-                #self.filename2 = self.current_tsl_filename_tf.get()
-                #self.final_filename = self.new_tsl_filename_tf.get()
                             
                 new_game_list = self.genNewTSLEntries()
                 concatenated_game_list = self.concatenateTSLfiles(new_game_list)               
@@ -285,15 +283,15 @@ class QCAS_TSL_Generator:
             else:
                 messagebox.showerror("Files not Chosen!", "Please select files first")
 
-        # input: game list
-        # output: none
+    # input: game list
+    # output: none
     def write_game_list_to_file(self, game_list):
         with open(self.new_tsl_filename_tf.get(), 'w+') as outfile:
             for game in game_list: 
                 outfile.write(game)
 
-        # input: none
-        # output: setup gui
+    # input: none
+    # output: setup gui
     def setup_GUI(self):
         self.root.wm_title("qcasTSLgenerator v"+VERSION)
         self.root.resizable(0,0)
@@ -342,10 +340,13 @@ class QCAS_TSL_Generator:
         new_tsl_entries = list() 
         try:
             with open(self.tab_delimited_filename_tf.get(), 'r') as infile: 
+                next(infile) #ignore header
+                
                 input_fieldnames = ['game_name', 'manufacturer', 'approval_status', 
                     'approval_date', 'market','ssan','vid_type','binimage','bin_type']
                 reader = csv.DictReader(infile, delimiter='\t', fieldnames=input_fieldnames)
 
+                
                 for row in reader:
                     # Remove commas in game name
                     # If you want to replace it with another symbol change the following 
@@ -381,8 +382,8 @@ class QCAS_TSL_Generator:
         
         return new_tsl_entries
 
-        # input: none:
-        # output: list of games, one line each
+    # input: none:
+    # output: list of games, one line each
     def scan_old_TSL_files(self):
         file = list()
         with open(self.current_tsl_filename_tf.get(), 'r') as old_TSL_file:
