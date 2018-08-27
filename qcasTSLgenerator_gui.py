@@ -8,6 +8,7 @@
 # Version 1.2.2 - Updated to handle leading "0" on Month file for MSL and PSL
 # Version 1.2.3 - Updated to fix qcas autogeneration, now prompts users if a new Game is being generated in a new month (refer to diagram).
 # Version 1.2.4 - Automatically removes headers from Tab Delimited File 
+# Versopm 1.3 - Added function to remove entries from TSL file
 # Last Modified date: 22/8/2018
 
 import csv
@@ -22,7 +23,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from datetime import datetime
 
-VERSION = "1.2.4"
+VERSION = "1.3"
 QCAS_BATCH_FILE_HEADER_STR = ("Echo To be run on Datafile PC\n" 
     "Echo CTRL-C to exit\nPause\n" 
     "REM **********************************************************************************************************************************\n"
@@ -233,6 +234,15 @@ class QCAS_TSL_Generator:
 
                 self.tab_delimited_filename_tf.delete(0, END)
                 self.tab_delimited_filename_tf.insert(0, filename)
+        
+        elif myButtonPress == '__tab_delimited_file_app_withdrawn__': 
+            tmp = filedialog.askopenfile(initialdir=QCAS_DIRECTORY, title="Select TAB Delimited: Approval Withdrawn Game list")
+
+            if tmp:
+                filename = tmp.name
+
+                self.games_removed_tf.delete(0, END)
+                self.games_removed_tf.insert(0, filename)
             
         elif myButtonPress == '__current_tsl_file__':
             tmp = filedialog.askopenfile(initialdir=QCAS_DIRECTORY, title="Select current TSL file")
@@ -244,14 +254,23 @@ class QCAS_TSL_Generator:
                 self.current_tsl_filename_tf.insert(0, filename2)
 
         elif myButtonPress == '__start__':
-            if (os.path.isfile(self.tab_delimited_filename_tf.get())) or (os.path.isfile(self.current_tsl_filename_tf.get())):
+            new_games_textfile = self.tab_delimited_filename_tf.get()
+            if os.path.isfile(new_games_textfile):
                             
-                new_game_list = self.genNewTSLEntries()
+                new_game_list = self.genTSLEntries(new_games_textfile)
                 concatenated_game_list = self.concatenateTSLfiles(new_game_list)               
                 sorted_game_list = self.sortFile(concatenated_game_list)
                 
                 final_new_game_list = self.sortFile(self.dropDuplicates(sorted_game_list))
 
+                # remove entries from games 
+                remove_games_textfile =  self.games_removed_tf.get() 
+                if os.path.isfile(remove_games_textfile):
+                    games_removed_list = self.genTSLEntries(remove_games_textfile)
+
+                    for game in games_removed_list: 
+                        final_new_game_list = [x for x in final_new_game_list if x != game]
+                
                 self.write_game_list_to_file(final_new_game_list)
 
                 generate_qcas_batch_file = messagebox.askquestion("qcasTSLgenerator: Finished!", "Generated new TSL file: " + self.new_tsl_filename_tf.get() +
@@ -263,7 +282,6 @@ class QCAS_TSL_Generator:
                         self.current_filename = tmp.name # get filename
 
                         new_games_in_new_month = messagebox.askyesno("New Games in New Month?", "Is a new game being approved in a new month?")
-                        print("New Games in New Month?: " + str(new_games_in_new_month))
                         batch_file = QCAS_batch_file(self.current_filename, self.new_tsl_filename_tf.get(), new_games_in_new_month)
 
                         # get batch_file generated entries
@@ -271,7 +289,6 @@ class QCAS_TSL_Generator:
 
                         # replace lines
                         batch_file.replace_qcas_command(entries)
-                        print("Generated new qcas.bat file: " + batch_file.get_filename())
 
                     print("Generated new TSL file: " + self.new_tsl_filename_tf.get())
                 else:
@@ -299,17 +316,19 @@ class QCAS_TSL_Generator:
         ttk.Label(self.root, justify=LEFT,
                   text = help_text).grid(row = 0, columnspan=2, padx=3, pady=3)
 
+        # Choose TAB Delimited File
         # Button
         button_Choose_TAB_delimited_file = ttk.Button(self.root,
-                                                      text = "Choose TAB delimited file...",
+                                                      text = "TAB file: New Games...",
                                                       width = 30,
                                                       command = lambda: self.handleButtonPress('__tab_delimited_file__'))                                             
         button_Choose_TAB_delimited_file.grid(row=1, column=0, padx=3, pady=3, sticky='e')
-
+        
         # Text Entry
         self.tab_delimited_filename_tf = ttk.Entry(self.root, width = 50)
         self.tab_delimited_filename_tf.grid(row=1, column=1)
 
+        # Choose Current TSL File
         # Button
         button_Choose_Current_TSL_file = ttk.Button(self.root,
                                                     text = "Choose Current TSL file...",
@@ -321,32 +340,50 @@ class QCAS_TSL_Generator:
         self.current_tsl_filename_tf = ttk.Entry(self.root, width = 50)
         self.current_tsl_filename_tf.grid(row=2, column=1)
 
-        ttk.Label(self.root, text = 'Enter new TSL filename: ').grid(row = 3, column=0, sticky='e', padx=3, pady=3)
+        
+        # Choose TAB Delimited: Approval Withdrawn       
+        # Button
+        button_Choose_TAB_file_App_Withdrawn = ttk.Button(self.root,
+                                                    text = "TAB file: Remove Games...",
+                                                    width = 30,
+                                                    command = lambda: self.handleButtonPress('__tab_delimited_file_app_withdrawn__'))                                                    
+        button_Choose_TAB_file_App_Withdrawn.grid(row=3, column=0, padx=3, pady=3, sticky='e')
+
+        # Text Entry
+        self.games_removed_tf = ttk.Entry(self.root, width = 50)
+        self.games_removed_tf.grid(row=3, column=1)
+        
+        # New TSL fname
+
+        ttk.Label(self.root, text = 'Enter new TSL filename: ').grid(row = 4, column=0, sticky='e', padx=3, pady=3)
 
         self.v = StringVar()
-        self.v.set("qcas_2017_09_v03.tsl")
+        now = datetime.now() 
+        
+        tmp_tsl_fname = "qcas_" + str(now.year) + "_" + "{:02}".format(now.month) + "_v01.tsl"
+        
+        self.v.set(tmp_tsl_fname)
         self.new_tsl_filename_tf = ttk.Entry(self.root, width = 50, textvariable=self.v)
-        self.new_tsl_filename_tf.grid(row=3, column=1, padx=3, pady=3)
+        self.new_tsl_filename_tf.grid(row=4, column=1, padx=3, pady=3)
 
         # Button
         button_start = ttk.Button(self.root, text = "Start...",
                                   command = lambda: self.handleButtonPress('__start__'))
-        button_start.grid(row=4, columnspan=2, sticky='se', padx=5, pady=5)        
+        button_start.grid(row=5, columnspan=2, sticky='se', padx=5, pady=5)        
         self.root.mainloop()
 
     # input: TAB delimited file, exported from MS Excel.
-    # output: Filename of new TSL game entries
-    def genNewTSLEntries(self):
-        new_tsl_entries = list() 
+    # output: list of new TSL game entries
+    def genTSLEntries(self, fname):
+        tsl_entries = list() 
         try:
-            with open(self.tab_delimited_filename_tf.get(), 'r') as infile: 
+            with open(fname, 'r') as infile: 
                 next(infile) #ignore header
                 
                 input_fieldnames = ['game_name', 'manufacturer', 'approval_status', 
                     'approval_date', 'market','ssan','vid_type','binimage','bin_type']
                 reader = csv.DictReader(infile, delimiter='\t', fieldnames=input_fieldnames)
 
-                
                 for row in reader:
                     # Remove commas in game name
                     # If you want to replace it with another symbol change the following 
@@ -375,13 +412,14 @@ class QCAS_TSL_Generator:
                     game_entry = str("%02d,%010d,%-60s,%-20s,%4s\n" % 
                         (int(row['manufacturer']), int(row['ssan']), 
                         cleaned_game_name, row['binimage'], my_bin_type))
-                    new_tsl_entries.append(game_entry)
+                    tsl_entries.append(game_entry)
             
         except csv.Error as e: 
-            sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
+            sys.exit('file %s, line %d: %s' % (fname, reader.line_num, e))
         
-        return new_tsl_entries
+        return tsl_entries
 
+        
     # input: none:
     # output: list of games, one line each
     def scan_old_TSL_files(self):
