@@ -2,6 +2,18 @@
 
 This is a script to generate the TSL file, to be used for the generation of new MSL/PSL files for Queensland Casinos. 
 
+## Version 1.2.3a (22/8/2018) 
+
+Addresses bugs related to qcas.bat autogeneration
+
+Will now prompts users if a new Game is being generated in a new month (refer to diagram in WI01)
+
+No - updates versions only
+
+Yes - creates new MSL entry and uses new month PSL as current month PSL while updating versions.
+
+Skips first line of TAB delimited file automatically
+
 ## Version 1.2.2 (5/7/2018)
 
 Updated to handle leading "0" on Month file for MSL and PSL
