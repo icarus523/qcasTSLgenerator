@@ -8,8 +8,8 @@
 # Version 1.2.2 - Updated to handle leading "0" on Month file for MSL and PSL
 # Version 1.2.3 - Updated to fix qcas autogeneration, now prompts users if a new Game is being generated in a new month (refer to diagram).
 # Version 1.2.4 - Automatically removes headers from Tab Delimited File 
-# Version 1.2.5 - Remove blank spaces and reads xls file automatically via pandas
-# Last Modified date: 22/8/2018
+# Version 1.3 - Remove blank spaces, uses OUTPUT_DIR as an output directory, some testing code, version to v1.3, automatic new TSL filename, to support xls file
+# Last Modified date: 8/12/2021 = refer to https://github.com/icarus523/qcasTSLgenerator.git
 
 import csv
 import sys
@@ -24,7 +24,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from datetime import datetime
 
-VERSION = "1.3.1"
+VERSION = "1.3"
 QCAS_BATCH_FILE_HEADER_STR = ("Echo To be run on Datafile PC\n" 
     "Echo CTRL-C to exit\nPause\n" 
     "REM **********************************************************************************************************************************\n"
