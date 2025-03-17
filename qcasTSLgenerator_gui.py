@@ -38,10 +38,10 @@ QCAS_BATCH_FILE_FOOTER_STR = (
 "\nREM ** NOTE for NEW MONTH if files do not exist they are automatically generated                                                 **" 
 "\nREM *******************************************************************************************************************************\n\n")
 
-QCAS_DIRECTORY = "G:\OLGR-TECHSERV\MISC\BINIMAGE\qcas"
+QCAS_DIRECTORY = "G:\\OLGR-TECHSERV\\MISC\\BINIMAGE\\qcas"
 #QCAS_DIRECTORY = "." # Testing only
 
-OUTPUT_DIR = 'output'
+OUTPUT_DIR = '.'
 
 class QCAS_batch_file():
 
@@ -243,10 +243,15 @@ class QCAS_TSL_Generator:
         # just inc version for now. 
         version = version + 1
         output_fname = ''
+        if month <10:
+            months="0"+str(month)
+        else:
+            months=str(month)
+        
         if version < 10: 
-            output_fname = "qcas_"+str(year)+"_"+str(month)+"_v0"+str(version)+".tsl"
+            output_fname = "qcas_"+str(year)+"_"+months+"_v0"+str(version)+".tsl"
         else: 
-            output_fname = "qcas_"+str(year)+"_"+str(month)+"_v"+str(version)+".tsl"
+            output_fname = "qcas_"+str(year)+"_"+months+"_v"+str(version)+".tsl"
 
         return output_fname
 
@@ -405,8 +410,8 @@ class QCAS_TSL_Generator:
     def genNewTSLEntries(self):
         new_tsl_entries = list() 
         try:
-            self.new_fname
-            with open(os.path.join(OUTPUT_DIR, self.new_fname), 'r', encoding='utf-8') as infile:             
+            # self.new_fname
+            with open(os.path.join(OUTPUT_DIR, self.new_fname), 'r', encoding="windows-1252") as infile:             
             #with open(self.tab_delimited_filename_tf.get(), 'r', encoding='utf-8') as infile: 
                 next(infile) #ignore header
                 
@@ -415,14 +420,8 @@ class QCAS_TSL_Generator:
                 reader = csv.DictReader(infile, delimiter='\t', fieldnames=input_fieldnames)
 
                 for row in reader:
-                    # Remove commas in game name
-                    # If you want to replace it with another symbol change the following 
-                    #   line to: .replace(",","[INSERT SYMBOL HERE]")
-                    cleaned_game_name = str(row['game_name']).replace(",", "")
-                    
-                    # remove non-ascii characters using re
-                    cleaned_game_name = re.sub(r'[^\x00-\x7f]',r'', cleaned_game_name)
-                
+                    cleaned_game_name = self.clean_string(str(row['game_name']))
+
                     # Process Video Type & Append to game name
                     if row['vid_type'].lower() == 'video':
                         cleaned_game_name += "-V"
@@ -440,15 +439,46 @@ class QCAS_TSL_Generator:
                         # sys.exit('Unknown binimage type %s' % row['bin_type'])         
                         print('Unknown binimage type %s' % row['bin_type'])         
 
+                    cleaned_binimage_s = self.clean_string(str(row['binimage']))           
+
                     game_entry = str("%02d,%010d,%-60s,%-20s,%4s\n" % 
-                        (int(row['manufacturer']), int(row['ssan']), 
-                        cleaned_game_name, row['binimage'], my_bin_type))
+                        (int(row['manufacturer']), 
+                        int(row['ssan']), 
+                        cleaned_game_name, 
+                        cleaned_binimage_s, 
+                        my_bin_type))
+                    
                     new_tsl_entries.append(game_entry)
             
         except csv.Error as e: 
             sys.exit('file %s, line %d: %s' % (filename, reader.line_num, e))
         
         return new_tsl_entries
+
+    def clean_string(self, s): 
+        # Remove commas in game name
+        # If you want to replace it with another symbol change the following 
+        #   line to: .replace(",","[INSERT SYMBOL HERE]")
+        s = s.replace(",", "")
+
+        # remove non-ascii characters using re
+        s = re.sub(r'[^\x00-\x7f]',r'', s)
+        
+        # remove smart quotes
+        replacements = {
+            "“": '"',  # Left double quote
+            "”": '"',  # Right double quote
+            "‘": "'",  # Left single quote (apostrophe)
+            "’": "'",  # Right single quote (apostrophe)
+            "—": "-",  # Em dash
+            "–": "-",  # En dash
+            "…": "...",  # Ellipsis
+        }
+        
+        for smart, ascii_char in replacements.items():
+            s = s.replace(smart, ascii_char)
+        
+        return s
 
     # input: none:
     # output: list of games, one line each
